@@ -63,7 +63,7 @@ See L<https://github.com/ukautz/Net-Amazon-DynamoDB> for latest release.
 use Moose;
 
 use v5.10;
-use version 0.74; our $VERSION = qv( "v0.1.5" );
+use version 0.74; our $VERSION = qv( "v0.1.6" );
 
 use DateTime::Format::HTTP;
 use DateTime;
@@ -87,12 +87,46 @@ The table definitions
 
 has tables => ( isa => 'HashRef[HashRef]', is => 'rw', required => 1, trigger => sub {
     my ( $self ) = @_;
+    
+    # check table
+    while( my ( $table, $table_ref ) = each %{ $self->{ tables } } ) {
+        
+        # determine primary keys
+        my @check_pk = ( 'hash' );
+        push @check_pk, 'range'
+            if defined $table_ref->{ range_key };
+        
+        # check primary keys
+        foreach my $check_pk( @check_pk ) {
+            my $key_pk = "${check_pk}_key";
+            my $name_pk = $table_ref->{ $key_pk };
+            croak "Missing '$key_pk' attribute in '$table' table definition\n"
+                unless defined $table_ref->{ $key_pk };
+            croak "Missing $check_pk key attribute in '$table' table attribute declaration: "
+                . "{ $table => { attributes => { '$name_pk' => 'S|N' } }\n"
+                unless defined $table_ref->{ attributes }->{ $name_pk };
+            croak "Wrong data type for $check_pk key attribute. Got '$table_ref->{ attributes }->{ $name_pk }',"
+                . " expect 'S' or 'N'"
+                unless $table_ref->{ attributes }->{ $name_pk } =~ /^(S|N)$/;
+        }
+        
+        # check attributes
+        while( my( $attr_name, $attr_type ) = each %{ $table_ref->{ attributes } } ) {
+            croak "Wrong data type for attribute '$attr_name' in table '$table': Got '$attr_type' was"
+                . " expecting 'S' or 'N' or 'SS' or 'NS'"
+                unless $attr_type =~ /^[NS]S?$/;
+        }
+    }
+    
+    # no need to go further, if no namespace given
     return unless $self->namespace;
+    
+    # update table definitions with namespace
     my %new_table = ();
     my $updated = 0;
-    foreach my $table( keys %{ $self->tables } ) {
+    foreach my $table( keys %{ $self->{ tables } } ) {
         my $table_updated = index( $table, $self->namespace ) == 0 ? $table : $self->_table_name( $table );
-        $new_table{ $table_updated } = $self->tables->{ $table };
+        $new_table{ $table_updated } = $self->{ tables }->{ $table };
         $updated ++ unless $table_updated eq $table;
     }
     if ( $updated ) {
@@ -556,7 +590,14 @@ sub put_item {
     # build the item
     foreach my $key( keys %$item_ref ){
         my $type = $self->_attrib_type( $table, $key );
-        my $value = $item_ref->{ $key } .'';
+        my $value;
+        if ( $type eq 'SS' || $type eq 'NS' ) {
+            my @values = map { $_. '' } ( ref( $item_ref->{ $key } ) ? @{ $item_ref->{ $key } } : () );
+            $value = \@values;
+        }
+        else {
+            $value = $item_ref->{ $key } .'';
+        }
         $put{ Item }->{ $key } = { $type => $value };
     }
     
@@ -714,7 +755,7 @@ sub update_item {
         # replace or add for array types
         elsif ( $type =~ /^[NS]S$/ ) {
             
-            # add
+            # add \[ qw/ value1 value2 / ]
             if ( ref( $value ) eq 'REF' ) {
                 $update{ AttributeUpdates }->{ $key } = {
                     Value  => { $type => [ map { "$_" } @$$value ] },
@@ -722,7 +763,7 @@ sub update_item {
                 };
             }
             
-            # replace
+            # replace [ qw/ value1 value2 / ]
             else {
                 $update{ AttributeUpdates }->{ $key } = {
                     Value  => { $type => [ map { "$_" } @$value ] },
@@ -972,7 +1013,8 @@ Deletes a single item by primary key (hash or hash+range key).
 =cut
 
 sub delete_item {
-    my ( $self, $table, $where_ref ) = @_;
+    my ( $self, $table, $where_ref, $args_ref ) = @_;
+    $args_ref ||= { return_old => 0 };
     $table = $self->_table_name( $table );
     
     # check definition
@@ -995,7 +1037,7 @@ sub delete_item {
     my %delete = (
         TableName    => $table,
         Key          => {},
-        ReturnValues => 'ALL_OLD'
+        ( $args_ref->{ return_old } ? ( ReturnValues => 'ALL_OLD' ) : () )
     );
     
     # setup pk
@@ -1538,6 +1580,7 @@ sub request {
             ? eval { $self->json->decode( $response->decoded_content ) } || { error => "Failed to parse JSON result" }
             : { error => "Failed to get result" };
         if ( defined $json_ref->{ __type } && $json_ref->{ __type } =~ /ProvisionedThroughputExceededException/ && $tries-- > 0 ) {
+            $ENV{ DYNAMO_DB_DEBUG_RETRY } && warn "Retry $target: $json\n";
             usleep( $self->retry_timeout * 1_000_000 );
             next;
         }
@@ -1804,11 +1847,17 @@ __PACKAGE__->meta->make_immutable;
 
 =head1 AUTHOR
 
-Ulrich Kautz <uk@fortrabbit.de>
+=over
+
+=item * Ulrich Kautz <uk@fortrabbit.de>
+
+=item * Thanks to MadHacker L<http://stackoverflow.com/users/1139526/madhacker> (the signing code in request method)
+
+=back
 
 =head1 COPYRIGHT
 
-Copyright (c) 2011 the L</AUTHOR> as listed above
+Copyright (c) 2012 the L</AUTHOR> as listed above
 
 =head1 LICENCSE
 
