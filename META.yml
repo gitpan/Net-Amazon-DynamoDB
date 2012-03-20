@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Net-Amazon-DynamoDB
-version:            v0.1.6
+version:            v0.1.10
 abstract:           Simple interface for Amazon DynamoDB
 author:
     - Ulrich Kautz <uk@fortrabbit.de>
@@ -9,13 +9,19 @@ distribution_type:  module
 configure_requires:
     ExtUtils::MakeMaker:  0
 build_requires:
+    Cache:       0
     Test::More:  0
 requires:
+    Cache:                0
     DateTime:             0
     DateTime::Format::HTTP:  0
+    DateTime::Format::Strptime:  0
+    DateTime::TimeZone:   0
+    DateTime::TimeZone::Local:  0
     Digest::SHA:          0
     HTTP::Request:        0
     JSON:                 0
+    LWP::Protocol::https:  0
     LWP::UserAgent:       0
     Moose:                1
     Net::Amazon::AWSSign:  0
