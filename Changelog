@@ -1,3 +1,9 @@
+0.1.13	2012-05-13
+	* Overwrite argument for "max_retries" in main operations
+
+0.1.11	2012-04-23
+	* Included Amazons new BatchWriteItem operation
+
 0.1.9	2012-03-18
 	* Typo in credentials error handling
 

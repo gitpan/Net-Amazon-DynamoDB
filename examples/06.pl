@@ -7,6 +7,9 @@ use FindBin qw/ $Bin /;
 use Data::Dumper;
 use lib "$Bin/../lib";
 use Net::Amazon::DynamoDB;
+#use Cache::File;
+use Cache::Memory;
+use Time::HiRes qw/ gettimeofday tv_interval /;
 
 $| = 1;
 
@@ -18,18 +21,19 @@ my $ddb = Net::Amazon::DynamoDB->new(
     access_key => $ENV{ AWS_ACCESS_KEY_ID },
     secret_key => $ENV{ AWS_SECRET_ACCESS_KEY },
     namespace  => 'dings_',
-    #use_keepalives => 10,
     tables     => {
         $table => {
             hash_key  => 'hid',
             range_key => 'rid',
             attributes  => {
-                hid  => 'S',
-                rid  => 'S',
-                data => 'S'
+                hid          => 'S',
+                rid          => 'S',
+                some_attrib  => 'S',
+                other_attrib => 'S',
             }
         }
-    }
+    },
+    raise_error => 1
 );
 
 print "Create table $table?\n";
@@ -44,20 +48,28 @@ while(1) {
 }
 print " OK\n";
 
-print "Put items ";
-$ddb->put_item( $table => {
-    hid  => 'node/somenode/http',
-    rid  => '~web'. $_,
-    data => 'I Am Web '. $_
-} ) for 1..10;
+if(0) {
+    print "Batch write put items ";
+    $ddb->batch_write_item( { $table => {
+        put => [ map {
+            {
+                hid          => 'HKey'. $_,
+                rid          => 'RKey'. $_,
+                some_attrib  => 'Whatever '. ( 'Bla' x $_ ),
+                other_attrib => 'Number '. $_
+            }
+        } 1..10 ]
+    } }, { process_all => 0 } );
+}
+else {
+    $ddb->batch_write_item( { $table => {
+        delete => [ map {
+            {
+                hid          => 'HKey'. $_,
+                rid          => 'RKey'. $_,
+            }
+        } 1..10 ]
+    } }, { process_all => 0 } );
+}
 print " OK\n";
 
-print "Query Items ";
-my $query_ref = $ddb->query_items( $table => {
-    hid => 'node/somenode/http',
-    rid => {
-        BEGINS_WITH => '~'
-    }
-} );
-print " OK\n";
-print Dumper( $query_ref );
