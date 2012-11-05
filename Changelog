@@ -1,4 +1,11 @@
-0.1.13	2012-05-13
+0.1.15	2012-10-10
+	* Added patches from fayland (fixed: no cache when undef result)
+	* Implemented consitent read attribute in batch_get_item()
+
+0.1.14	2012-10-10
+	* Enable process_all parameter for batch_get_item
+
+0.1.13	2012-05-06
 	* Overwrite argument for "max_retries" in main operations
 
 0.1.11	2012-04-23

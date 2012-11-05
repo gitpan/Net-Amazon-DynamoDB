@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Net-Amazon-DynamoDB
-version:            v0.1.13
+version:            v0.1.15
 abstract:           Simple interface for Amazon DynamoDB
 author:
     - Ulrich Kautz <uk@fortrabbit.de>
@@ -13,8 +13,6 @@ build_requires:
     Cache::Memory:  0
     Test::More:     0
 requires:
-    Cache:                0
-    Cache::Memory:        0
     DateTime:             0
     DateTime::Format::HTTP:  0
     DateTime::Format::Strptime:  0
@@ -29,14 +27,13 @@ requires:
     Moose:                1
     Net::Amazon::AWSSign:  0
     perl:                 5.010000
-    Test::More:           0
     Time::HiRes:          0
     XML::Simple:          0
 no_index:
     directory:
         - t
         - inc
-generated_by:       ExtUtils::MakeMaker version 6.55_02
+generated_by:       ExtUtils::MakeMaker version 6.57_05
 meta-spec:
     url:      http://module-build.sourceforge.net/META-spec-v1.4.html
     version:  1.4
